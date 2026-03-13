@@ -5,7 +5,7 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      width: 320px;
+      width: 340px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: #1a1a2e;
       color: #e0e0e0;
@@ -16,6 +16,31 @@
       margin-bottom: 12px;
       color: #e94560;
     }
+
+    /* タブ */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 6px;
+      background: #16213e;
+      color: #888;
+      border: 1px solid #333;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      text-align: center;
+    }
+    .tab-btn.active {
+      background: #e94560;
+      color: white;
+      border-color: #e94560;
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
 
     /* 入力エリア */
     .add-form {
@@ -47,7 +72,7 @@
     /* サイトリスト */
     .site-list {
       list-style: none;
-      max-height: 280px;
+      max-height: 260px;
       overflow-y: auto;
     }
     .site-list li {
@@ -77,17 +102,108 @@
       text-align: center;
       padding: 12px 0;
     }
+
+    /* スケジュール */
+    .schedule-list {
+      list-style: none;
+    }
+    .schedule-list li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 0;
+      border-bottom: 1px solid #222;
+      font-size: 13px;
+    }
+    .schedule-list li:last-child { border-bottom: none; }
+    .day-label {
+      width: 32px;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+    .day-toggle {
+      appearance: none;
+      width: 36px;
+      height: 20px;
+      background: #333;
+      border-radius: 10px;
+      position: relative;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+    .day-toggle::after {
+      content: "";
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      background: #888;
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .day-toggle:checked {
+      background: #e94560;
+    }
+    .day-toggle:checked::after {
+      transform: translateX(16px);
+      background: white;
+    }
+    .time-inputs {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .time-inputs input[type="time"] {
+      padding: 3px 4px;
+      border: 1px solid #333;
+      border-radius: 4px;
+      background: #16213e;
+      color: #e0e0e0;
+      font-size: 12px;
+      width: 90px;
+    }
+    .time-inputs span {
+      color: #666;
+      font-size: 12px;
+    }
+    .time-inputs input:disabled {
+      opacity: 0.3;
+    }
+    .schedule-note {
+      color: #666;
+      font-size: 11px;
+      margin-top: 8px;
+      line-height: 1.5;
+    }
   </style>
 </head>
 <body>
   <h1>SocialDetox</h1>
 
-  <div class="add-form">
-    <input type="text" id="siteInput" placeholder="例: www.youtube.com">
-    <button id="addBtn">追加</button>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="sites">サイト</button>
+    <button class="tab-btn" data-tab="schedule">スケジュール</button>
   </div>
 
-  <ul class="site-list" id="siteList"></ul>
+  <!-- サイトタブ -->
+  <div class="tab-content active" id="tab-sites">
+    <div class="add-form">
+      <input type="text" id="siteInput" placeholder="例: www.youtube.com">
+      <button id="addBtn">追加</button>
+    </div>
+    <ul class="site-list" id="siteList"></ul>
+  </div>
+
+  <!-- スケジュールタブ -->
+  <div class="tab-content" id="tab-schedule">
+    <ul class="schedule-list" id="scheduleList"></ul>
+    <p class="schedule-note">
+      ONの曜日の指定時間帯にブロックします。<br>
+      全てOFFの場合は常時ブロックします。
+    </p>
+  </div>
 
   <script src="popup.js"></script>
 </body>

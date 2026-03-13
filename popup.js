@@ -1,9 +1,19 @@
+// === タブ切り替え ===
+document.querySelectorAll(".tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach((c) => c.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
+  });
+});
+
+// === サイト管理 ===
 const siteInput = document.getElementById("siteInput");
 const addBtn = document.getElementById("addBtn");
 const siteList = document.getElementById("siteList");
 
-// ブロックリストを表示
-async function renderList() {
+async function renderSiteList() {
   const data = await chrome.storage.local.get("blockedSites");
   const sites = data.blockedSites ?? [];
 
@@ -32,14 +42,11 @@ async function renderList() {
   }
 }
 
-// サイトを追加
 async function addSite() {
   let site = siteInput.value.trim().toLowerCase();
   if (!site) return;
 
-  // https:// や http:// が付いていたら除去
   site = site.replace(/^https?:\/\//, "");
-  // 末尾のスラッシュやパスを除去
   site = site.replace(/\/.*$/, "");
 
   const data = await chrome.storage.local.get("blockedSites");
@@ -47,7 +54,7 @@ async function addSite() {
 
   if (sites.includes(site)) {
     siteInput.value = "";
-    return; // 重複は追加しない
+    return;
   }
 
   sites.push(site);
@@ -55,10 +62,9 @@ async function addSite() {
   await chrome.runtime.sendMessage({ type: "updateRules" });
 
   siteInput.value = "";
-  renderList();
+  renderSiteList();
 }
 
-// サイトを削除
 async function removeSite(site) {
   const data = await chrome.storage.local.get("blockedSites");
   const sites = (data.blockedSites ?? []).filter((s) => s !== site);
@@ -66,14 +72,109 @@ async function removeSite(site) {
   await chrome.storage.local.set({ blockedSites: sites });
   await chrome.runtime.sendMessage({ type: "updateRules" });
 
-  renderList();
+  renderSiteList();
 }
 
-// イベントリスナー
 addBtn.addEventListener("click", addSite);
 siteInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") addSite();
 });
 
-// 初期表示
-renderList();
+// === スケジュール管理 ===
+const DAYS = [
+  { key: "mon", label: "月" },
+  { key: "tue", label: "火" },
+  { key: "wed", label: "水" },
+  { key: "thu", label: "木" },
+  { key: "fri", label: "金" },
+  { key: "sat", label: "土" },
+  { key: "sun", label: "日" }
+];
+
+// デフォルト: 全曜日OFF（= 常時ブロック）
+function defaultSchedule() {
+  const schedule = {};
+  for (const day of DAYS) {
+    schedule[day.key] = { enabled: false, start: "09:00", end: "18:00" };
+  }
+  return schedule;
+}
+
+async function getSchedule() {
+  const data = await chrome.storage.local.get("schedule");
+  return data.schedule ?? defaultSchedule();
+}
+
+async function saveSchedule(schedule) {
+  await chrome.storage.local.set({ schedule });
+  await chrome.runtime.sendMessage({ type: "updateRules" });
+}
+
+function renderSchedule(schedule) {
+  const list = document.getElementById("scheduleList");
+  list.innerHTML = "";
+
+  for (const day of DAYS) {
+    const entry = schedule[day.key];
+    const li = document.createElement("li");
+
+    // 曜日ラベル
+    const label = document.createElement("span");
+    label.className = "day-label";
+    label.textContent = day.label;
+
+    // ON/OFFトグル
+    const toggle = document.createElement("input");
+    toggle.type = "checkbox";
+    toggle.className = "day-toggle";
+    toggle.checked = entry.enabled;
+
+    // 時間帯
+    const timeDiv = document.createElement("div");
+    timeDiv.className = "time-inputs";
+
+    const startInput = document.createElement("input");
+    startInput.type = "time";
+    startInput.value = entry.start;
+    startInput.disabled = !entry.enabled;
+
+    const sep = document.createElement("span");
+    sep.textContent = "〜";
+
+    const endInput = document.createElement("input");
+    endInput.type = "time";
+    endInput.value = entry.end;
+    endInput.disabled = !entry.enabled;
+
+    timeDiv.appendChild(startInput);
+    timeDiv.appendChild(sep);
+    timeDiv.appendChild(endInput);
+
+    // トグル変更時
+    toggle.addEventListener("change", () => {
+      entry.enabled = toggle.checked;
+      startInput.disabled = !toggle.checked;
+      endInput.disabled = !toggle.checked;
+      saveSchedule(schedule);
+    });
+
+    // 時間変更時
+    startInput.addEventListener("change", () => {
+      entry.start = startInput.value;
+      saveSchedule(schedule);
+    });
+    endInput.addEventListener("change", () => {
+      entry.end = endInput.value;
+      saveSchedule(schedule);
+    });
+
+    li.appendChild(label);
+    li.appendChild(toggle);
+    li.appendChild(timeDiv);
+    list.appendChild(li);
+  }
+}
+
+// === 初期表示 ===
+renderSiteList();
+getSchedule().then(renderSchedule);
