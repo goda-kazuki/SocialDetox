@@ -93,6 +93,37 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   }
 });
 
+// declarativeNetRequest で捕捉できないケースのフォールバック
+// （直接アドレスバーから x.com 等の短いドメインにアクセスした場合など）
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
+  if (!changeInfo.url) return;
+
+  let urlHost;
+  try {
+    urlHost = new URL(changeInfo.url).hostname;
+  } catch {
+    return;
+  }
+
+  const storageData = await chrome.storage.local.get([
+    STORAGE_KEY_SITES,
+    STORAGE_KEY_SCHEDULE
+  ]);
+
+  if (!shouldBlock(storageData[STORAGE_KEY_SCHEDULE] ?? null)) return;
+
+  const sites = storageData[STORAGE_KEY_SITES] ?? DEFAULT_BLOCKED_SITES;
+  const isBlocked = sites.some(
+    (site) => urlHost === site || urlHost.endsWith(`.${site}`)
+  );
+
+  if (isBlocked) {
+    chrome.tabs.update(tabId, {
+      url: chrome.runtime.getURL(BLOCKED_PAGE)
+    });
+  }
+});
+
 // 他の部分（popup等）からのメッセージを受信
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === MSG_UPDATE_RULES) {
