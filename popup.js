@@ -8,19 +8,29 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
   });
 });
 
+// === 定数 ===
+const STORAGE_KEY_SITES = "blockedSites";
+const STORAGE_KEY_SCHEDULE = "schedule";
+const MSG_UPDATE_RULES = "updateRules";
+
 // === サイト管理 ===
 const siteInput = document.getElementById("siteInput");
 const addBtn = document.getElementById("addBtn");
 const siteList = document.getElementById("siteList");
 
-async function renderSiteList() {
-  const data = await chrome.storage.local.get("blockedSites");
-  const sites = data.blockedSites ?? [];
+async function renderSiteList(sites) {
+  if (!sites) {
+    const data = await chrome.storage.local.get(STORAGE_KEY_SITES);
+    sites = data[STORAGE_KEY_SITES] ?? [];
+  }
 
   siteList.innerHTML = "";
 
   if (sites.length === 0) {
-    siteList.innerHTML = '<li class="empty">ブロック中のサイトはありません</li>';
+    const li = document.createElement("li");
+    li.className = "empty";
+    li.textContent = "ブロック中のサイトはありません";
+    siteList.appendChild(li);
     return;
   }
 
@@ -49,8 +59,8 @@ async function addSite() {
   site = site.replace(/^https?:\/\//, "");
   site = site.replace(/\/.*$/, "");
 
-  const data = await chrome.storage.local.get("blockedSites");
-  const sites = data.blockedSites ?? [];
+  const data = await chrome.storage.local.get(STORAGE_KEY_SITES);
+  const sites = data[STORAGE_KEY_SITES] ?? [];
 
   if (sites.includes(site)) {
     siteInput.value = "";
@@ -58,21 +68,21 @@ async function addSite() {
   }
 
   sites.push(site);
-  await chrome.storage.local.set({ blockedSites: sites });
-  await chrome.runtime.sendMessage({ type: "updateRules" });
+  await chrome.storage.local.set({ [STORAGE_KEY_SITES]: sites });
+  await chrome.runtime.sendMessage({ type: MSG_UPDATE_RULES });
 
   siteInput.value = "";
-  renderSiteList();
+  renderSiteList(sites);
 }
 
 async function removeSite(site) {
-  const data = await chrome.storage.local.get("blockedSites");
-  const sites = (data.blockedSites ?? []).filter((s) => s !== site);
+  const data = await chrome.storage.local.get(STORAGE_KEY_SITES);
+  const sites = (data[STORAGE_KEY_SITES] ?? []).filter((s) => s !== site);
 
-  await chrome.storage.local.set({ blockedSites: sites });
-  await chrome.runtime.sendMessage({ type: "updateRules" });
+  await chrome.storage.local.set({ [STORAGE_KEY_SITES]: sites });
+  await chrome.runtime.sendMessage({ type: MSG_UPDATE_RULES });
 
-  renderSiteList();
+  renderSiteList(sites);
 }
 
 addBtn.addEventListener("click", addSite);
@@ -101,13 +111,13 @@ function defaultSchedule() {
 }
 
 async function getSchedule() {
-  const data = await chrome.storage.local.get("schedule");
-  return data.schedule ?? defaultSchedule();
+  const data = await chrome.storage.local.get(STORAGE_KEY_SCHEDULE);
+  return data[STORAGE_KEY_SCHEDULE] ?? defaultSchedule();
 }
 
 async function saveSchedule(schedule) {
-  await chrome.storage.local.set({ schedule });
-  await chrome.runtime.sendMessage({ type: "updateRules" });
+  await chrome.storage.local.set({ [STORAGE_KEY_SCHEDULE]: schedule });
+  await chrome.runtime.sendMessage({ type: MSG_UPDATE_RULES });
 }
 
 function renderSchedule(schedule) {
