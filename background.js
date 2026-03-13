@@ -64,7 +64,7 @@ async function updateBlockRules() {
         redirect: { extensionPath: BLOCKED_PAGE }
       },
       condition: {
-        urlFilter: `||${site}`,
+        requestDomains: [site],
         resourceTypes: ["main_frame"]
       }
     }));
